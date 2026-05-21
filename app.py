@@ -1,10 +1,3 @@
-import streamlit as st
-import tempfile, os, psutil, time
-from dotenv import load_dotenv
-from rag.ingestor import ingest_files, load_index, index_exists
-from rag.retriever import retrieve
-from rag.generator import build_prompt, MODEL, MAX_RETRIES
-import rag.generator as gen_module
 import nltk
 try:
     nltk.data.find("tokenizers/punkt")
@@ -12,9 +5,17 @@ except LookupError:
     nltk.download("punkt")
     nltk.download("punkt_tab")
 
+import streamlit as st
+import tempfile, os, psutil, time, socket
+from dotenv import load_dotenv
+from rag.ingestor import ingest_files, load_index, index_exists
+from rag.retriever import retrieve
+from rag.generator import build_prompt, MODEL, MAX_RETRIES
+import rag.generator as gen_module
+
 load_dotenv()
 
-st.set_page_config(page_title="AskMyPDF", page_icon="📄", layout="wide")
+st.set_page_config(page_title="Ask My PDF Bot", page_icon="📄", layout="wide")
 
 # ── Session state ───────────────────────────────────────────────
 if "history"      not in st.session_state: st.session_state.history      = []
@@ -26,7 +27,7 @@ if "indexed_docs" not in st.session_state: st.session_state.indexed_docs = []
 
 # ── Sidebar ─────────────────────────────────────────────────────
 with st.sidebar:
-    st.title("📄 AskMyPDF")
+    st.title("📄 Ask My PDF Bot")
     st.caption("RAG · Hybrid Retrieval · Multi-LLM")
 
     uploaded = st.file_uploader(
@@ -85,7 +86,8 @@ with st.sidebar:
     llm_choice = st.radio(
         "Choose model",
         ["Groq (fast, free)", "Gemini (API)", "Ollama (offline)"],
-        index=0
+        index=0,
+        key="llm_choice"
     )
 
     if llm_choice == "Groq (fast, free)":
@@ -163,22 +165,33 @@ if query:
         answer_placeholder = st.empty()
         answer             = ""
 
+        # ── Ollama (offline / local only) ──
         if gen_module.USE_OLLAMA:
-            with st.spinner("Generating with local Llama…"):
-                answer = gen_module.generate_answer_ollama(prompt)
-            answer_placeholder.markdown(answer)
+            try:
+                socket.create_connection(("localhost", 11434), timeout=2)
+                with st.spinner("Generating with local Llama…"):
+                    answer = gen_module.generate_answer_ollama(prompt)
+                answer_placeholder.markdown(answer)
+            except OSError:
+                answer = (
+                    "⚠️ Ollama is not running on this machine. "
+                    "Please start Ollama locally or switch to "
+                    "Groq / Gemini in the sidebar."
+                )
+                answer_placeholder.warning(answer)
 
+        # ── Groq (fast, free) ──
         elif gen_module.USE_GROQ:
-            with st.spinner("Generating with Groq…"):
-                try:
+            try:
+                with st.spinner("Generating with Groq…"):
                     answer = gen_module.generate_answer_groq(prompt)
-                    answer_placeholder.markdown(answer)
-                except Exception as e:
-                    answer = f"⚠️ Groq error: {str(e)}"
-                    answer_placeholder.error(answer)
+                answer_placeholder.markdown(answer)
+            except Exception as e:
+                answer = f"⚠️ Groq error: {str(e)}"
+                answer_placeholder.error(answer)
 
+        # ── Gemini (streaming) ──
         else:
-            # Gemini with streaming
             import google.generativeai as genai
             from google.api_core.exceptions import ResourceExhausted
             genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
