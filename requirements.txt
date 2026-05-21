@@ -1,6 +1,6 @@
 streamlit
-pymupdf                   # fitz — fast PDF extraction
-python-docx               # Word doc support
+pymupdf
+python-docx
 langchain
 langchain-google-genai
 langchain-community
@@ -9,4 +9,7 @@ sentence-transformers
 rank-bm25
 nltk
 python-dotenv
-psutil                    # system monitoring
+psutil
+groq
+google-generativeai
+requests
