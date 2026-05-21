@@ -1,0 +1,12 @@
+streamlit
+pymupdf                   # fitz — fast PDF extraction
+python-docx               # Word doc support
+langchain
+langchain-google-genai
+langchain-community
+faiss-cpu
+sentence-transformers
+rank-bm25
+nltk
+python-dotenv
+psutil                    # system monitoring
