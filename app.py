@@ -5,6 +5,12 @@ from rag.ingestor import ingest_files, load_index, index_exists
 from rag.retriever import retrieve
 from rag.generator import build_prompt, MODEL, MAX_RETRIES
 import rag.generator as gen_module
+import nltk
+try:
+    nltk.data.find("tokenizers/punkt")
+except LookupError:
+    nltk.download("punkt")
+    nltk.download("punkt_tab")
 
 load_dotenv()
 
